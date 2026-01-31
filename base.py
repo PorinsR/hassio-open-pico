@@ -31,20 +31,23 @@ class BaseEntity(CoordinatorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
+        # Use device_id for consistent identification across restarts
+        device_identifier = self.coordinator.device_id
+        
         if not self.coordinator.data:
             return DeviceInfo(
-                identifiers={(DOMAIN, self.coordinator.pico_ip)},
-                name=f"Pico {self.coordinator.pico_ip}",
+                identifiers={(DOMAIN, device_identifier)},
+                name=self.coordinator.device_name,
                 manufacturer="Tecnosystemi",
             )
 
         device_info = self.coordinator.data.device_info
 
         return DeviceInfo(
-            identifiers={(DOMAIN, self.coordinator.pico_ip)},
-            name=device_info.name or f"Pico {self.coordinator.pico_ip}",
+            identifiers={(DOMAIN, device_identifier)},
+            name=self.coordinator.device_name,
             manufacturer="Tecnosystemi",
-            model=f"Model {device_info.model}",
+            model=f"Pico {device_info.model}" if device_info.model else "Pico",
             sw_version=device_info.firmware_version,
         )
 
