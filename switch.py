@@ -2,10 +2,10 @@
 import logging
 
 from homeassistant.components.switch import SwitchEntity, SwitchDeviceClass
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .base import BaseEntity
@@ -14,26 +14,19 @@ from .coordinator import MainCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: ConfigType,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-    discovery_info=None,
-):
-    """Set up the Switch platform from YAML."""
-
-    # Get all coordinators from hass.data
-    coordinators = hass.data[DOMAIN]["coordinators"]
-
-    # Create switch entities for each coordinator/device
-    switches = []
-    for idx, coordinator in enumerate(coordinators):
-        switches.extend([
-            PicoNightModeSwitch(coordinator, idx),
-            PicoLEDStatusSwitch(coordinator, idx),
-        ])
-
-    async_add_entities(switches)
+) -> None:
+    """Set up the Switch platform from a Config Entry."""
+    
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    
+    async_add_entities([
+        PicoNightModeSwitch(coordinator),
+        PicoLEDStatusSwitch(coordinator),
+    ])
 
 
 class PicoNightModeSwitch(BaseEntity, SwitchEntity):
@@ -42,9 +35,9 @@ class PicoNightModeSwitch(BaseEntity, SwitchEntity):
     _attr_translation_key = "night_mode"
     _attr_device_class = SwitchDeviceClass.SWITCH
 
-    def __init__(self, coordinator: MainCoordinator, device_index: int):
+    def __init__(self, coordinator: MainCoordinator):
         """Initialize the switch."""
-        super().__init__(coordinator, device_index)
+        super().__init__(coordinator)
 
         self._attr_unique_id = f"{DOMAIN}_night_mode_{coordinator.pico_ip.replace('.', '_')}"
         self._attr_name = "Night Mode"
@@ -97,9 +90,9 @@ class PicoLEDStatusSwitch(BaseEntity, SwitchEntity):
     _attr_translation_key = "led_status"
     _attr_device_class = SwitchDeviceClass.SWITCH
 
-    def __init__(self, coordinator: MainCoordinator, device_index: int):
+    def __init__(self, coordinator: MainCoordinator):
         """Initialize the switch."""
-        super().__init__(coordinator, device_index)
+        super().__init__(coordinator)
 
         self._attr_unique_id = f"{DOMAIN}_led_status_{coordinator.pico_ip.replace('.', '_')}"
         self._attr_name = "LED Status"

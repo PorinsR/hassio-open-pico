@@ -1,4 +1,24 @@
 {
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Open Pico",
+        "description": "Enter the connection details for your Pico device.",
+        "data": {
+          "ip_address": "IP Address",
+          "pin": "PIN",
+          "name": "Name (Optional)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  },
   "errors": {
     "unsupported_mode": "Mode {mode} does not support speed control"
   },

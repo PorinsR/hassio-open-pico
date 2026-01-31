@@ -2,10 +2,10 @@
 import logging
 
 from homeassistant.components.select import SelectEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType
 
 from .open_pico_local_api.enums.target_humidity_enum import TargetHumidityEnum
 from .open_pico_local_api.enums.device_mode_enum import DeviceModeEnum
@@ -17,28 +17,19 @@ from .coordinator import MainCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: ConfigType,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-    discovery_info=None,
-):
-    """Set up the Select platform from YAML."""
-
-    # Get all coordinators from hass.data
-    coordinators = hass.data[DOMAIN]["coordinators"]
-
-    # Create select entities for each coordinator/device
-    selects = [
-        entity
-        for idx, coordinator in enumerate(coordinators)
-        for entity in [
-            PicoTargetHumiditySelect(coordinator, idx),
-            PicoPresetModeSelect(coordinator, idx)
-        ]
-    ]
-
-    async_add_entities(selects)
+) -> None:
+    """Set up the Select platform from a Config Entry."""
+    
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    
+    async_add_entities([
+        PicoTargetHumiditySelect(coordinator),
+        PicoPresetModeSelect(coordinator),
+    ])
 
 
 class PicoTargetHumiditySelect(BaseEntity, SelectEntity):
@@ -46,9 +37,9 @@ class PicoTargetHumiditySelect(BaseEntity, SelectEntity):
 
     _attr_translation_key = "target_humidity"
 
-    def __init__(self, coordinator: MainCoordinator, device_index: int):
+    def __init__(self, coordinator: MainCoordinator):
         """Initialize the select."""
-        super().__init__(coordinator, device_index)
+        super().__init__(coordinator)
 
         # Set unique_id based on IP address
         self._attr_unique_id = f"{DOMAIN}_target_humidity_{coordinator.pico_ip.replace('.', '_')}"
@@ -111,9 +102,9 @@ class PicoPresetModeSelect(BaseEntity, SelectEntity):
 
     _attr_translation_key = "preset_mode"
 
-    def __init__(self, coordinator: MainCoordinator, device_index: int):
+    def __init__(self, coordinator: MainCoordinator):
         """Initialize the select."""
-        super().__init__(coordinator, device_index)
+        super().__init__(coordinator)
 
         # Set unique_id based on IP address
         self._attr_unique_id = f"{DOMAIN}_preset_mode_{coordinator.pico_ip.replace('.', '_')}"

@@ -2,10 +2,10 @@
 import logging
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType
 
 from .open_pico_local_api.enums.device_mode_enum import DeviceModeEnum
 
@@ -16,24 +16,16 @@ from .coordinator import MainCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: ConfigType,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-    discovery_info=None,
-):
-    """Set up the Fan platform from YAML."""
-
-    # Get all coordinators from hass.data
-    coordinators = hass.data[DOMAIN]["coordinators"]
-
-    # Create a fan entity for each coordinator/device
-    fans = [
-        PicoFan(coordinator, idx)
-        for idx, coordinator in enumerate(coordinators)
-    ]
-
-    async_add_entities(fans)
+) -> None:
+    """Set up the Fan platform from a Config Entry."""
+    
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    
+    async_add_entities([PicoFan(coordinator)])
 
 
 class PicoFan(BaseEntity, FanEntity):
@@ -48,9 +40,9 @@ class PicoFan(BaseEntity, FanEntity):
 
     _attr_translation_key = "pico"
 
-    def __init__(self, coordinator: MainCoordinator, device_index: int):
+    def __init__(self, coordinator: MainCoordinator):
         """Initialize the fan."""
-        super().__init__(coordinator, device_index)
+        super().__init__(coordinator)
 
         # Set unique_id based on IP address
         self._attr_unique_id = f"{DOMAIN}_fan_{coordinator.pico_ip.replace('.', '_')}"
