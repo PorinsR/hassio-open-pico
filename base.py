@@ -33,7 +33,7 @@ class BaseEntity(CoordinatorEntity):
         if not self.coordinator.data:
             return DeviceInfo(
                 identifiers={(DOMAIN, self.coordinator.pico_ip)},
-                name=f"Pico {self.coordinator.pico_ip}",
+                name=self.coordinator.device_name,
                 manufacturer="Tecnosystemi",
             )
 
@@ -41,7 +41,7 @@ class BaseEntity(CoordinatorEntity):
 
         return DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.pico_ip)},
-            name=device_info.name or f"Pico {self.coordinator.pico_ip}",
+            name=device_info.name or self.coordinator.device_name,
             manufacturer="Tecnosystemi",
             model=f"Model {device_info.model}",
             sw_version=device_info.firmware_version,

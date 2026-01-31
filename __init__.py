@@ -46,6 +46,10 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
+import ipaddress
+
+# ...
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Open Pico integration from YAML configuration."""
     hass.data.setdefault(DOMAIN, {})
@@ -63,8 +67,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data[DOMAIN]["verbose"] = verbose
 
     for device_config in devices:
+        # Normalize IP address to prevent string mismatches (e.g. 192.168.1.1 vs 192.168.1.01)
+        try:
+            ip_obj = ipaddress.ip_address(device_config["ip"])
+            normalized_ip = str(ip_obj)
+        except ValueError:
+            normalized_ip = device_config["ip"]
+
         entry_data = {
-            CONF_IP_ADDRESS: device_config["ip"],
+            CONF_IP_ADDRESS: normalized_ip,
             CONF_PIN: device_config["pin"],
             CONF_NAME: device_config.get("name")
         }

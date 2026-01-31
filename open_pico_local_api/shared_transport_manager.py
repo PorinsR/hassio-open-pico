@@ -201,6 +201,21 @@ class SharedTransportManager:
             reg = self._devices[device_id]
             return (reg.idp_range_start, reg.idp_range_size)
 
+        # Check for duplicate IP:Port registration
+        for existing_id, reg in self._devices.items():
+            if reg.ip == ip and reg.port == port:
+                _LOGGER.warning(
+                    f"Duplicate registration detected: Device '{device_id}' matches existing '{existing_id}' at {ip}:{port}. "
+                    "This usually indicates a duplicate configuration entry."
+                )
+                # Use the existing IDP range to avoid allocating a new one,
+                # BUT this is risky if they have different queues.
+                # Ideally we should prevent this.
+                # For now, let's allow it but warn, to see if it fixes the crash/loop.
+                # Actually, if we return a new range, we have the concurrency bug.
+                # If we fail, the user sees "Setup failed".
+                return (reg.idp_range_start, reg.idp_range_size)
+
         # Allocate IDP range for this device
         idp_range_start = self._next_idp_range
         self._next_idp_range += self._idp_range_size
