@@ -197,8 +197,13 @@ class SharedTransportManager:
             raise RuntimeError("Transport not initialized. Call initialize() first.")
 
         if device_id in self._devices:
-            # Already registered, return existing range
+            # Already registered, update queue and callbacks but keep IDP range
             reg = self._devices[device_id]
+            reg.response_queue = response_queue
+            reg.event_callbacks = event_callbacks or {}
+            
+            if self._verbose:
+                print(f"✓ Updated registration for '{device_id}'")
             return (reg.idp_range_start, reg.idp_range_size)
 
         # Check for duplicate IP:Port registration
@@ -206,15 +211,9 @@ class SharedTransportManager:
             if reg.ip == ip and reg.port == port:
                 _LOGGER.warning(
                     f"Duplicate registration detected: Device '{device_id}' matches existing '{existing_id}' at {ip}:{port}. "
-                    "This usually indicates a duplicate configuration entry."
+                    "Allocating separate IDP range to allow parallel communication."
                 )
-                # Use the existing IDP range to avoid allocating a new one,
-                # BUT this is risky if they have different queues.
-                # Ideally we should prevent this.
-                # For now, let's allow it but warn, to see if it fixes the crash/loop.
-                # Actually, if we return a new range, we have the concurrency bug.
-                # If we fail, the user sees "Setup failed".
-                return (reg.idp_range_start, reg.idp_range_size)
+                # Continue to allocate new range (do not return existing)
 
         # Allocate IDP range for this device
         idp_range_start = self._next_idp_range

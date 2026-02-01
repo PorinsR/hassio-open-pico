@@ -351,6 +351,16 @@ class PicoClient:
                         _LOGGER.debug(f"↻ [{self.device_id}] Retry {attempt}/{max_attempts}")
                     await asyncio.sleep(self.retry_delay)
 
+                # Reset IDP counter on new attempt to ensure we start from a known state
+                # or maybe we should just try to increment?
+                # The issue with 'Ofiss' failing repeatedly is that it seems to be getting responses
+                # but maybe with wrong IDP or IDP mismatch?
+                # The log shows "ACK received but no status" sometimes or just timeouts.
+                
+                # Let's try to be more aggressive with IDP reset if we are failing
+                if attempt > 1:
+                     await self._reset_idp_counter()
+
                 for idp_sync_attempt in range(max_idp_sync):
                     if idp_sync_attempt > 0 and self.verbose:
                         _LOGGER.debug(f"  ↻ [{self.device_id}] IDP sync attempt {idp_sync_attempt}/{max_idp_sync}")
@@ -361,7 +371,7 @@ class PicoClient:
                     if not await self._send_udp_packet(cmd):
                         continue
 
-                    response_timeout = 2.0
+                    response_timeout = 5.0 # Increased timeout
                     response = await self._wait_for_response(idp, response_timeout)
 
                     if response:
@@ -369,7 +379,7 @@ class PicoClient:
                             _LOGGER.debug(f"  ✓ [{self.device_id}] IDP synchronized after {idp_sync_attempt} increments")
                         return response
 
-                    # If no response after 3 seconds, IDP is likely out of sync
+                    # If no response after timeout, IDP is likely out of sync
                     if self.verbose:
                         _LOGGER.debug(f"  ⚠ [{self.device_id}] No response for IDP {idp} - likely out of sync")
 
@@ -385,7 +395,7 @@ class PicoClient:
         """Wait for responses matching the given idp"""
         got_ack = False
         end_time = time.time() + timeout
-        ack_timeout = 2.0
+        ack_timeout = 3.0
         ack_received_time = None
 
         while time.time() < end_time:
@@ -394,6 +404,7 @@ class PicoClient:
                 break
 
             if got_ack and ack_received_time:
+                # If we got ACK but no data after 2s, give up early to trigger retry with new IDP
                 if time.time() - ack_received_time > ack_timeout:
                     if self.verbose:
                         _LOGGER.debug(f"  ⚠ [{self.device_id}] ACK received but no status - IDP may be out of sync")
@@ -413,6 +424,10 @@ class PicoClient:
                         _LOGGER.debug(f"  ✓ [{self.device_id}] ACK received (idp:{idp})")
                     got_ack = True
                     ack_received_time = time.time()
+                    
+                    # Extend timeout slightly once we get an ACK to give device time to process
+                    if end_time - time.time() < 2.0:
+                        end_time = time.time() + 2.0
 
                 elif response.get("res") != 99:
                     if self.verbose:

@@ -36,12 +36,16 @@ class MainCoordinator(DataUpdateCoordinator):
         self._consecutive_failures = 0
         self._max_failures_before_reset = 3
 
+        # Add random jitter to avoid synchronized polling
+        import random
+        jitter = random.uniform(0, 5)
+        
         super().__init__(
             hass,
             _LOGGER,
             name=f"{DOMAIN} ({self.device_name})",
             update_method=self.async_update_data,
-            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL + jitter),
         )
 
     async def async_update_data(self) -> PicoDeviceModel:
