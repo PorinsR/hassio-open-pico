@@ -2,7 +2,7 @@
 
 DOMAIN = "open_pico"
 
-DEFAULT_SCAN_INTERVAL = 30  # Increased from 5 to 30 to prevent network congestion
+DEFAULT_SCAN_INTERVAL = 5
 
 # Device mode mapping - single source of truth
 MODE_INT_TO_PRESET = {

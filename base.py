@@ -18,9 +18,10 @@ class BaseEntity(CoordinatorEntity):
     coordinator: MainCoordinator
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: MainCoordinator) -> None:
+    def __init__(self, coordinator: MainCoordinator, device_index: int) -> None:
         """Initialise entity."""
         super().__init__(coordinator)
+        self.device_index = device_index
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -33,7 +34,7 @@ class BaseEntity(CoordinatorEntity):
         if not self.coordinator.data:
             return DeviceInfo(
                 identifiers={(DOMAIN, self.coordinator.pico_ip)},
-                name=self.coordinator.device_name,
+                name=f"Pico {self.coordinator.pico_ip}",
                 manufacturer="Tecnosystemi",
             )
 
@@ -41,7 +42,7 @@ class BaseEntity(CoordinatorEntity):
 
         return DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.pico_ip)},
-            name=device_info.name or self.coordinator.device_name,
+            name=device_info.name or f"Pico {self.coordinator.pico_ip}",
             manufacturer="Tecnosystemi",
             model=f"Model {device_info.model}",
             sw_version=device_info.firmware_version,

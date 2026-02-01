@@ -197,23 +197,9 @@ class SharedTransportManager:
             raise RuntimeError("Transport not initialized. Call initialize() first.")
 
         if device_id in self._devices:
-            # Already registered, update queue and callbacks but keep IDP range
+            # Already registered, return existing range
             reg = self._devices[device_id]
-            reg.response_queue = response_queue
-            reg.event_callbacks = event_callbacks or {}
-            
-            if self._verbose:
-                print(f"✓ Updated registration for '{device_id}'")
             return (reg.idp_range_start, reg.idp_range_size)
-
-        # Check for duplicate IP:Port registration
-        for existing_id, reg in self._devices.items():
-            if reg.ip == ip and reg.port == port:
-                _LOGGER.warning(
-                    f"Duplicate registration detected: Device '{device_id}' matches existing '{existing_id}' at {ip}:{port}. "
-                    "Allocating separate IDP range to allow parallel communication."
-                )
-                # Continue to allocate new range (do not return existing)
 
         # Allocate IDP range for this device
         idp_range_start = self._next_idp_range

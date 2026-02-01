@@ -6,7 +6,6 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfTemperature,
@@ -14,6 +13,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .base import BaseEntity
@@ -22,22 +22,29 @@ from .coordinator import MainCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up the Sensor platform from a Config Entry."""
-    
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    
-    async_add_entities([
-        PicoTemperatureSensor(coordinator),
-        PicoHumiditySensor(coordinator),
-        PicoAirQualitySensor(coordinator),
-        PicoTVOCSensor(coordinator),
-        PicoECO2Sensor(coordinator),
-    ])
+async def async_setup_platform(
+        hass: HomeAssistant,
+        config: ConfigType,
+        async_add_entities: AddEntitiesCallback,
+        discovery_info=None,
+):
+    """Set up the Sensor platform from YAML."""
+
+    # Get all coordinators from hass.data
+    coordinators = hass.data[DOMAIN]["coordinators"]
+
+    # Create sensor entities for each coordinator/device
+    sensors = []
+    for idx, coordinator in enumerate(coordinators):
+        sensors.extend([
+            PicoTemperatureSensor(coordinator, idx),
+            PicoHumiditySensor(coordinator, idx),
+            PicoAirQualitySensor(coordinator, idx),
+            PicoTVOCSensor(coordinator, idx),
+            PicoECO2Sensor(coordinator, idx),
+        ])
+
+    async_add_entities(sensors)
 
 
 class PicoTemperatureSensor(BaseEntity, SensorEntity):
@@ -49,9 +56,9 @@ class PicoTemperatureSensor(BaseEntity, SensorEntity):
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_suggested_display_precision = 1
 
-    def __init__(self, coordinator: MainCoordinator):
+    def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_index)
 
         self._attr_unique_id = f"{DOMAIN}_temperature_{coordinator.pico_ip.replace('.', '_')}"
         self._attr_name = "Temperature"
@@ -73,9 +80,9 @@ class PicoHumiditySensor(BaseEntity, SensorEntity):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_suggested_display_precision = 1
 
-    def __init__(self, coordinator: MainCoordinator):
+    def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_index)
 
         self._attr_unique_id = f"{DOMAIN}_humidity_{coordinator.pico_ip.replace('.', '_')}"
         self._attr_name = "Humidity"
@@ -97,9 +104,9 @@ class PicoAirQualitySensor(BaseEntity, SensorEntity):
     _attr_native_unit_of_measurement = CONCENTRATION_PARTS_PER_MILLION
     _attr_suggested_display_precision = 0
 
-    def __init__(self, coordinator: MainCoordinator):
+    def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_index)
 
         self._attr_unique_id = f"{DOMAIN}_air_quality_{coordinator.pico_ip.replace('.', '_')}"
         self._attr_name = "CO2"
@@ -121,9 +128,9 @@ class PicoTVOCSensor(BaseEntity, SensorEntity):
     _attr_native_unit_of_measurement = CONCENTRATION_PARTS_PER_MILLION
     _attr_suggested_display_precision = 0
 
-    def __init__(self, coordinator: MainCoordinator):
+    def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_index)
 
         self._attr_unique_id = f"{DOMAIN}_tvoc_{coordinator.pico_ip.replace('.', '_')}"
         self._attr_name = "TVOC"
@@ -171,9 +178,9 @@ class PicoECO2Sensor(BaseEntity, SensorEntity):
     _attr_native_unit_of_measurement = CONCENTRATION_PARTS_PER_MILLION
     _attr_suggested_display_precision = 0
 
-    def __init__(self, coordinator: MainCoordinator):
+    def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_index)
 
         self._attr_unique_id = f"{DOMAIN}_eco2_{coordinator.pico_ip.replace('.', '_')}"
         self._attr_name = "eCO2"

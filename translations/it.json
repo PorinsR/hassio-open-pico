@@ -43,6 +43,11 @@
           "natural_ventilation": "Ventilazione Naturale"
         }
       }
+    },
+    "number": {
+      "fan_speed": {
+        "name": "Velocità Ventola"
+      }
     }
   }
 }
