@@ -2,7 +2,6 @@
 import logging
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -35,15 +34,6 @@ async def async_setup_platform(
     ]
 
     async_add_entities(fans)
-
-
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up the platform from a config entry."""
-    await async_setup_platform(hass, {}, async_add_entities)
 
 
 class PicoFan(BaseEntity, FanEntity):

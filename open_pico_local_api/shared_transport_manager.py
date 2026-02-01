@@ -160,32 +160,10 @@ class SharedTransportManager:
 
             try:
                 loop = asyncio.get_running_loop()
-                # Try to create datagram endpoint with specific binding options
-                # Use reuse_port=True to allow immediate reuse of the socket on systems that support it (Linux/Unix)
-                # This helps prevent "Address in use" errors during quick restarts
-                try:
-                    self._transport, self._protocol = await loop.create_datagram_endpoint(
-                        lambda: SharedPicoProtocol(self, verbose),
-                        local_addr=("0.0.0.0", local_port),
-                        reuse_port=True
-                    )
-                except (TypeError, OSError) as bind_err:
-                    if verbose:
-                        print(f"⚠ Failed to bind with reuse_port, trying standard bind: {bind_err}")
-                        
-                    # If the error is strictly "Address in use", waiting briefly might help if the OS is cleaning up
-                    if isinstance(bind_err, OSError) and bind_err.errno == 98:
-                        if verbose:
-                            print("⚠ Port still in use, waiting 2s before retry...")
-                        await asyncio.sleep(2.0)
-
-                    # Fallback for systems that don't support reuse_port parameter (e.g. Windows or older Python)
-                    # or if reuse_port failed for another reason
-                    self._transport, self._protocol = await loop.create_datagram_endpoint(
-                        lambda: SharedPicoProtocol(self, verbose),
-                        local_addr=("0.0.0.0", local_port)
-                    )
-                    
+                self._transport, self._protocol = await loop.create_datagram_endpoint(
+                    lambda: SharedPicoProtocol(self, verbose),
+                    local_addr=("0.0.0.0", local_port)
+                )
                 self._initialized = True
 
                 if verbose:

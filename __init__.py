@@ -5,12 +5,10 @@ import asyncio
 import logging
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, discovery
 from homeassistant.helpers.typing import ConfigType
-from homeassistant import config_entries
 
 from .const import DOMAIN
 from .coordinator import MainCoordinator
@@ -57,59 +55,27 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     # Get your domain's configuration from configuration.yaml
     domain_config = config[DOMAIN]
-    
-    # Store config in hass.data for use by async_setup_entry
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN]["config"] = domain_config
-
-    # Trigger import flow if no entry exists
-    # This ensures that even if loaded via YAML, we create a Config Entry
-    if not hass.config_entries.async_entries(DOMAIN):
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                DOMAIN, context={"source": config_entries.SOURCE_IMPORT}, data=domain_config
-            )
-        )
-
-    return True
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Open Pico from a config entry."""
-    _LOGGER.debug("Setting up Open Pico from config entry")
-
-    # Get config from entry data (if imported) or hass.data (fallback)
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN]["coordinators"] = []
-    
-    domain_config = entry.data
-    if not domain_config and "config" in hass.data[DOMAIN]:
-        domain_config = hass.data[DOMAIN]["config"]
-        
-    if not domain_config:
-        _LOGGER.error("No configuration found for Open Pico")
-        return False
-
     devices = domain_config.get("devices", [])
     local_port = domain_config.get("local_port", 40069)
     verbose = domain_config.get("verbose", False)
 
     _LOGGER.info("Setting up %s with %d device(s)", DOMAIN, len(devices))
 
+    # Initialize hass.data for this domain
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["coordinators"] = []
+    hass.data[DOMAIN]["config"] = domain_config
+
     # Create shared PicoClient manager
-    # Check if a manager already exists in hass.data from a previous load
-    if DOMAIN in hass.data and "manager" in hass.data[DOMAIN]:
-        manager = hass.data[DOMAIN]["manager"]
-        _LOGGER.debug("Reusing existing PicoClientManager")
-    else:
-        manager = PicoClientManager(local_port=local_port, verbose=verbose)
-        try:
-            await manager.initialize()
-            hass.data[DOMAIN]["manager"] = manager
-            _LOGGER.info("Shared transport initialized on port %d", local_port)
-        except Exception as err:
-            _LOGGER.error("Failed to initialize shared transport: %s", err, exc_info=True)
-            return False
+    manager = PicoClientManager(local_port=local_port, verbose=verbose)
+
+    try:
+        await manager.initialize()
+        hass.data[DOMAIN]["manager"] = manager
+        _LOGGER.info("Shared transport initialized on port %d", local_port)
+    except Exception as err:
+        _LOGGER.error("Failed to initialize shared transport: %s", err, exc_info=True)
+        return False
 
     # Create clients and coordinators for each device
     successful_devices = 0
@@ -203,19 +169,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN, successful_devices, len(devices)
     )
 
-    # Forward setup to platforms
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # Load platforms using discovery
+    for platform in PLATFORMS:
+        hass.async_create_task(
+            discovery.async_load_platform(
+                hass, platform, DOMAIN, {}, config
+            )
+        )
 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry | None = None) -> bool:
+async def async_unload_entry(hass: HomeAssistant) -> bool:
     """Unload the integration."""
     _LOGGER.info("Unloading %s integration", DOMAIN)
-
-    # Unload platforms
-    if entry:
-        await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     # Shutdown coordinators
     if DOMAIN in hass.data and "coordinators" in hass.data[DOMAIN]:
@@ -232,6 +199,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry | None = No
             _LOGGER.info("Shared transport manager shut down successfully")
         except Exception as err:
             _LOGGER.error("Error shutting down manager: %s", err)
+
+    # Remove services if you have any
+    for service in hass.services.async_services_for_domain(DOMAIN):
+        hass.services.async_remove(DOMAIN, service)
 
     # Clean up hass.data
     if DOMAIN in hass.data:
