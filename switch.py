@@ -2,6 +2,7 @@
 import logging
 
 from homeassistant.components.switch import SwitchEntity, SwitchDeviceClass
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -34,6 +35,15 @@ async def async_setup_platform(
         ])
 
     async_add_entities(switches)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the platform from a config entry."""
+    await async_setup_platform(hass, {}, async_add_entities)
 
 
 class PicoNightModeSwitch(BaseEntity, SwitchEntity):
@@ -90,6 +100,7 @@ class PicoNightModeSwitch(BaseEntity, SwitchEntity):
         except Exception as err:
             _LOGGER.error("Failed to turn off night mode: %s", err)
             raise HomeAssistantError(f"Failed to turn off night mode: {err}") from err
+
 
 class PicoLEDStatusSwitch(BaseEntity, SwitchEntity):
     """Representation of a Pico LED Status Switch."""

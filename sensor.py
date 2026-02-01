@@ -6,11 +6,8 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
-from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfTemperature,
-    CONCENTRATION_PARTS_PER_MILLION,
-)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType
@@ -23,10 +20,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_platform(
-        hass: HomeAssistant,
-        config: ConfigType,
-        async_add_entities: AddEntitiesCallback,
-        discovery_info=None,
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info=None,
 ):
     """Set up the Sensor platform from YAML."""
 
@@ -41,20 +38,27 @@ async def async_setup_platform(
             PicoHumiditySensor(coordinator, idx),
             PicoAirQualitySensor(coordinator, idx),
             PicoTVOCSensor(coordinator, idx),
-            PicoECO2Sensor(coordinator, idx),
+            PicoCO2Sensor(coordinator, idx),
         ])
 
     async_add_entities(sensors)
 
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the platform from a config entry."""
+    await async_setup_platform(hass, {}, async_add_entities)
+
+
 class PicoTemperatureSensor(BaseEntity, SensorEntity):
     """Representation of a Pico Temperature Sensor."""
 
-    _attr_translation_key = "temperature"
     _attr_device_class = SensorDeviceClass.TEMPERATURE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-    _attr_suggested_display_precision = 1
 
     def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
@@ -66,19 +70,17 @@ class PicoTemperatureSensor(BaseEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Return the state of the sensor."""
-        if not self.coordinator.data or not self.coordinator.data.sensors or not self.coordinator.data.sensors.temperature:
+        if not self.coordinator.data:
             return None
-        return self.coordinator.data.sensors.temperature_celsius
+        return self.coordinator.data.sensors.temperature
 
 
 class PicoHumiditySensor(BaseEntity, SensorEntity):
     """Representation of a Pico Humidity Sensor."""
 
-    _attr_translation_key = "humidity"
     _attr_device_class = SensorDeviceClass.HUMIDITY
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = PERCENTAGE
-    _attr_suggested_display_precision = 1
 
     def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
@@ -90,43 +92,38 @@ class PicoHumiditySensor(BaseEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Return the state of the sensor."""
-        if not self.coordinator.data or not self.coordinator.data.sensors or not self.coordinator.data.sensors.humidity:
+        if not self.coordinator.data:
             return None
-        return self.coordinator.data.sensors.humidity_percent
+        return self.coordinator.data.sensors.humidity
 
 
 class PicoAirQualitySensor(BaseEntity, SensorEntity):
-    """Representation of a Pico Air Quality (CO2) Sensor."""
+    """Representation of a Pico Air Quality Sensor."""
 
     _attr_translation_key = "air_quality"
-    _attr_device_class = SensorDeviceClass.CO2
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_native_unit_of_measurement = CONCENTRATION_PARTS_PER_MILLION
-    _attr_suggested_display_precision = 0
 
     def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
         super().__init__(coordinator, device_index)
 
         self._attr_unique_id = f"{DOMAIN}_air_quality_{coordinator.pico_ip.replace('.', '_')}"
-        self._attr_name = "CO2"
+        self._attr_name = "Air Quality"
 
     @property
     def native_value(self) -> int | None:
         """Return the state of the sensor."""
-        if not self.coordinator.data or not self.coordinator.data.sensors or not self.coordinator.data.sensors.air_quality:
+        if not self.coordinator.data:
             return None
         return self.coordinator.data.sensors.air_quality
 
 
 class PicoTVOCSensor(BaseEntity, SensorEntity):
-    """Representation of a Pico TVOC (Total Volatile Organic Compounds) Sensor."""
+    """Representation of a Pico TVOC Sensor."""
 
-    _attr_translation_key = "tvoc"
-    _attr_device_class = SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS_PARTS
+    _attr_device_class = SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_native_unit_of_measurement = CONCENTRATION_PARTS_PER_MILLION
-    _attr_suggested_display_precision = 0
+    _attr_native_unit_of_measurement = CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
 
     def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
@@ -138,82 +135,28 @@ class PicoTVOCSensor(BaseEntity, SensorEntity):
     @property
     def native_value(self) -> int | None:
         """Return the state of the sensor."""
-        if not self.coordinator.data or not self.coordinator.data.sensors or not self.coordinator.data.sensors.tvoc:
+        if not self.coordinator.data:
             return None
         return self.coordinator.data.sensors.tvoc
 
-    @property
-    def icon(self) -> str:
-        """Return the icon based on TVOC level."""
-        if not self.coordinator.data or not self.coordinator.data.sensors or not self.coordinator.data.sensors.tvoc:
-            return "mdi:chemical-weapon"
 
-        tvoc = self.coordinator.data.sensors.tvoc
+class PicoCO2Sensor(BaseEntity, SensorEntity):
+    """Representation of a Pico CO2 Sensor."""
 
-        # TVOC level thresholds (ppb or µg/m³)
-        # < 220: Excellent
-        # 220-660: Good
-        # 660-2200: Moderate
-        # 2200-5500: Poor
-        # > 5500: Very Poor
-
-        if tvoc < 220:
-            return "mdi:air-filter"
-        elif tvoc < 660:
-            return "mdi:chemical-weapon"
-        elif tvoc < 2200:
-            return "mdi:alert-circle-outline"
-        elif tvoc < 5500:
-            return "mdi:alert"
-        else:
-            return "mdi:alert-octagon"
-
-
-class PicoECO2Sensor(BaseEntity, SensorEntity):
-    """Representation of a Pico eCO2 (equivalent CO2) Sensor."""
-
-    _attr_translation_key = "eco2"
     _attr_device_class = SensorDeviceClass.CO2
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = CONCENTRATION_PARTS_PER_MILLION
-    _attr_suggested_display_precision = 0
 
     def __init__(self, coordinator: MainCoordinator, device_index: int):
         """Initialize the sensor."""
         super().__init__(coordinator, device_index)
 
-        self._attr_unique_id = f"{DOMAIN}_eco2_{coordinator.pico_ip.replace('.', '_')}"
-        self._attr_name = "eCO2"
+        self._attr_unique_id = f"{DOMAIN}_co2_{coordinator.pico_ip.replace('.', '_')}"
+        self._attr_name = "CO2"
 
     @property
     def native_value(self) -> int | None:
         """Return the state of the sensor."""
-        if not self.coordinator.data or not self.coordinator.data.sensors or not self.coordinator.data.sensors.eco2:
+        if not self.coordinator.data:
             return None
         return self.coordinator.data.sensors.eco2
-
-    @property
-    def icon(self) -> str:
-        """Return the icon based on eCO2 level."""
-        if not self.coordinator.data or not self.coordinator.data.sensors or not self.coordinator.data.sensors.eco2:
-            return "mdi:molecule-co2"
-
-        eco2 = self.coordinator.data.sensors.eco2
-
-        # eCO2 level thresholds (ppm) - similar to CO2
-        # < 600: Excellent
-        # 600-1000: Good
-        # 1000-1500: Moderate
-        # 1500-2000: Poor
-        # > 2000: Very Poor
-
-        if eco2 < 600:
-            return "mdi:air-filter"
-        elif eco2 < 1000:
-            return "mdi:molecule-co2"
-        elif eco2 < 1500:
-            return "mdi:alert-circle-outline"
-        elif eco2 < 2000:
-            return "mdi:alert"
-        else:
-            return "mdi:alert-octagon"
