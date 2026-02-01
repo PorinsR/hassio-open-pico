@@ -97,15 +97,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.info("Setting up %s with %d device(s)", DOMAIN, len(devices))
 
     # Create shared PicoClient manager
-    manager = PicoClientManager(local_port=local_port, verbose=verbose)
-
-    try:
-        await manager.initialize()
-        hass.data[DOMAIN]["manager"] = manager
-        _LOGGER.info("Shared transport initialized on port %d", local_port)
-    except Exception as err:
-        _LOGGER.error("Failed to initialize shared transport: %s", err, exc_info=True)
-        return False
+    # Check if a manager already exists in hass.data from a previous load
+    if DOMAIN in hass.data and "manager" in hass.data[DOMAIN]:
+        manager = hass.data[DOMAIN]["manager"]
+        _LOGGER.debug("Reusing existing PicoClientManager")
+    else:
+        manager = PicoClientManager(local_port=local_port, verbose=verbose)
+        try:
+            await manager.initialize()
+            hass.data[DOMAIN]["manager"] = manager
+            _LOGGER.info("Shared transport initialized on port %d", local_port)
+        except Exception as err:
+            _LOGGER.error("Failed to initialize shared transport: %s", err, exc_info=True)
+            return False
 
     # Create clients and coordinators for each device
     successful_devices = 0
