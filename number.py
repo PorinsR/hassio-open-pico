@@ -21,6 +21,7 @@ async def async_setup_platform(
     discovery_info=None,
 ):
     """Set up the Number platform from YAML."""
+    _LOGGER.debug("Setting up number platform")
 
     # Get all coordinators from hass.data
     coordinators = hass.data[DOMAIN]["coordinators"]
@@ -30,7 +31,8 @@ async def async_setup_platform(
         PicoFanSpeedNumber(coordinator, idx)
         for idx, coordinator in enumerate(coordinators)
     ]
-
+    
+    _LOGGER.debug(f"Adding {len(numbers)} number entities")
     async_add_entities(numbers)
 
 
@@ -54,10 +56,11 @@ class PicoFanSpeedNumber(BaseEntity, NumberEntity):
     def available(self) -> bool:
         """Return if entity is available."""
         # Only available if the device supports fan speed control
-        return (
+        available = (
             super().available and
             self.coordinator.supports_fan_speed
         )
+        return available
 
     @property
     def native_value(self) -> float | None:

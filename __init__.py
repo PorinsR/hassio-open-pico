@@ -5,6 +5,7 @@ import asyncio
 import logging
 import voluptuous as vol
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, discovery
@@ -180,7 +181,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Open Pico from a config entry."""
+    _LOGGER.debug("Setting up Open Pico from config entry (shim for YAML)")
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry | None = None) -> bool:
     """Unload the integration."""
     _LOGGER.info("Unloading %s integration", DOMAIN)
 
