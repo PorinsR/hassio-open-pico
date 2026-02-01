@@ -6,6 +6,7 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -16,6 +17,22 @@ from .base import BaseEntity
 from .coordinator import MainCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the Sensor platform from a config entry."""
+    coordinator = hass.data[DOMAIN]["entries"][entry.entry_id]
+    async_add_entities([
+        PicoTemperatureSensor(coordinator, 0),
+        PicoHumiditySensor(coordinator, 0),
+        PicoAirQualitySensor(coordinator, 0),
+        PicoTVOCSensor(coordinator, 0),
+        PicoCO2Sensor(coordinator, 0),
+    ])
 
 
 async def async_setup_platform(

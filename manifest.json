@@ -4,6 +4,7 @@
   "codeowners": [
     "@VoidElle"
   ],
+  "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/VoidElle/hassio-open-pico",
   "issue_tracker": "https://github.com/VoidElle/hassio-open-pico/issues",

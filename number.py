@@ -2,6 +2,7 @@
 import logging
 
 from homeassistant.components.number import NumberEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -12,6 +13,18 @@ from .base import BaseEntity
 from .coordinator import MainCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the Number platform from a config entry."""
+    coordinator = hass.data[DOMAIN]["entries"][entry.entry_id]
+    async_add_entities([
+        PicoFanSpeedNumber(coordinator, 0),
+    ])
 
 
 async def async_setup_platform(
